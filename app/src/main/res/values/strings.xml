@@ -1,0 +1,9 @@
+<resources>
+    <string name="app_name">Authentication</string>
+    <string name="hint_email">Correo Electronico</string>
+    <string name="hint_password">Contraseña</string>
+    <string name="create_account_button">Crear cuenta</string>
+    <string name="signin_button">Iniciar Sesión</string>
+    <string name="welcome_to_app">Bienvenido a la aplicacion</string>
+    <string name="signout_button">Cerrar Sesion</string>
+</resources>
