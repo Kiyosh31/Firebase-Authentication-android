@@ -10,20 +10,32 @@ import android.widget.Button;
 import android.widget.EditText;
 import android.widget.Toast;
 
+import com.google.android.gms.auth.api.Auth;
+import com.google.android.gms.auth.api.signin.GoogleSignInOptions;
+import com.google.android.gms.auth.api.signin.GoogleSignInResult;
+import com.google.android.gms.common.ConnectionResult;
+import com.google.android.gms.common.SignInButton;
+import com.google.android.gms.common.api.GoogleApiClient;
 import com.google.android.gms.tasks.OnCompleteListener;
 import com.google.android.gms.tasks.Task;
+import com.google.firebase.auth.AuthCredential;
 import com.google.firebase.auth.AuthResult;
 import com.google.firebase.auth.FirebaseAuth;
 import com.google.firebase.auth.FirebaseUser;
+import com.google.firebase.auth.GoogleAuthCredential;
+import com.google.firebase.auth.GoogleAuthProvider;
 
-public class MainActivity extends AppCompatActivity {
+public class MainActivity extends AppCompatActivity implements GoogleApiClient.OnConnectionFailedListener {
 
     private static final String TAG = "MainActivity";
+    private static final int SIGN_IN_GOOGLE_CODE = 1;
     private FirebaseAuth firebaseAuth;
     private FirebaseAuth.AuthStateListener authStateListener;
+    private GoogleApiClient googleApiClient;
 
     private Button btnCreateAccount;
     private Button btnSignIn;
+    private SignInButton btnSignInGoogle;
 
     private EditText edtEmail;
     private EditText edtPassword;
@@ -36,6 +48,7 @@ public class MainActivity extends AppCompatActivity {
 
         btnCreateAccount = (Button) findViewById(R.id.btnCreateAccount);
         btnSignIn = (Button) findViewById(R.id.btnSignIn);
+        btnSignInGoogle = (SignInButton) findViewById(R.id.btnSignInGoogle);
 
         edtEmail = (EditText) findViewById(R.id.edtEmail);
         edtPassword = (EditText) findViewById(R.id.edtPassword);
@@ -55,6 +68,14 @@ public class MainActivity extends AppCompatActivity {
                 signIn(edtEmail.getText().toString(), edtPassword.getText().toString());
             }
         });
+
+        btnSignInGoogle.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View view) {
+                Intent intent = Auth.GoogleSignInApi.getSignInIntent(googleApiClient);
+                startActivityForResult(intent, SIGN_IN_GOOGLE_CODE);
+            }
+        });
     }
 
     private void initialize(){
@@ -72,6 +93,17 @@ public class MainActivity extends AppCompatActivity {
                 }
             }
         };
+
+        //Inicializacion de google account
+        GoogleSignInOptions gso = new GoogleSignInOptions.Builder(GoogleSignInOptions.DEFAULT_SIGN_IN)
+                .requestIdToken(getString(R.string.default_web_client_id))
+                .requestEmail()
+                .build();
+
+        googleApiClient = new GoogleApiClient.Builder(this)
+                .enableAutoManage(this, this)
+                .addApi(Auth.GOOGLE_SIGN_IN_API, gso)
+                .build();
     }
 
     private void createAccount(String email, String password){
@@ -103,6 +135,28 @@ public class MainActivity extends AppCompatActivity {
         });
     }
 
+    private void signInGoogleFirebase(GoogleSignInResult googleSignInResult){
+        if (googleSignInResult.isSuccess()){
+            AuthCredential authCredential =
+                    GoogleAuthProvider.getCredential(googleSignInResult.getSignInAccount().getIdToken(), null);
+            firebaseAuth.signInWithCredential(authCredential).addOnCompleteListener(this, new OnCompleteListener<AuthResult>() {
+                @Override
+                public void onComplete(@NonNull Task<AuthResult> task) {
+                    if(task.isSuccessful()){
+                        Toast.makeText(MainActivity.this, "Google Authentication Success", Toast.LENGTH_SHORT).show();
+                        Intent i = new Intent(MainActivity.this, WelcomeActivity.class);
+                        startActivity(i);
+                        finish();
+                    } else {
+                        Toast.makeText(MainActivity.this, "Google Authentication Unsuccess", Toast.LENGTH_SHORT).show();
+                    }
+                }
+            });
+        } else {
+            Toast.makeText(MainActivity.this, "Google SignIn Unsuccess", Toast.LENGTH_SHORT).show();
+        }
+    }
+
     @Override
     protected void onStart() {
         super.onStart();
@@ -115,6 +169,21 @@ public class MainActivity extends AppCompatActivity {
         super.onStop();
 
         firebaseAuth.removeAuthStateListener(authStateListener);
+    }
+
+    @Override
+    protected void onActivityResult(int requestCode, int resultCode, Intent data) {
+        super.onActivityResult(requestCode, resultCode, data);
+
+        if(requestCode == SIGN_IN_GOOGLE_CODE){
+            GoogleSignInResult googleSignInResult = Auth.GoogleSignInApi.getSignInResultFromIntent(data);
+            signInGoogleFirebase(googleSignInResult);
+        }
+    }
+
+    @Override
+    public void onConnectionFailed(@NonNull ConnectionResult connectionResult) {
+
     }
 }
 
